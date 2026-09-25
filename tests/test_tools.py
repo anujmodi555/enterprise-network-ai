@@ -1,6 +1,6 @@
 import pytest
 
-from enterprise_network_ai.tools import (
+from enterprise_network_ai.network_tools import (
     get_bgp_neighbors,
     get_device_alerts,
     get_device_status,
@@ -34,6 +34,7 @@ def test_get_interface_status():
     )
 
     assert result["device_id"] == "R1"
+
     assert (
         result["interface"]["name"]
         == "GigabitEthernet0/0"
@@ -51,12 +52,14 @@ def test_get_bgp_neighbors():
 def test_unknown_device():
 
     with pytest.raises(ValueError):
+
         get_device_status("R999")
 
 
 def test_unknown_interface():
 
     with pytest.raises(ValueError):
+
         get_interface_status(
             device_id="R1",
             interface_name="GigabitEthernet99/99",

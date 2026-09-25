@@ -2,13 +2,13 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from .data import devices as DEVICES
-from .llm import ask_network_assistant
+from .gemini_mcp import ask_network_assistant
 from .models import Alert, DeviceStatus
 
 
 app = FastAPI(
     title="Enterprise Network AI Assistant",
-    version="3.0.0",
+    version="4.0.0",
 )
 
 
@@ -17,6 +17,7 @@ class TroubleshootingRequest(BaseModel):
         min_length=1,
         description="Network device identifier",
     )
+
     question: str = Field(
         min_length=3,
         description="Network troubleshooting question",
@@ -49,8 +50,8 @@ def get_device_status(device_id: str):
         "vendor": device["vendor"],
         "model": device["model"],
         "status": device["status"],
-        "cpu_percent": device["cpu_percent"],
-        "memory_percent": device["memory_percent"],
+        "cpu": device["cpu"],
+        "memory": device["memory"],
     }
 
 
@@ -75,7 +76,7 @@ def get_device_alerts(device_id: str):
     "/troubleshoot",
     response_model=TroubleshootingResponse,
 )
-def troubleshoot(
+async def troubleshoot(
     request: TroubleshootingRequest,
 ):
 
@@ -85,15 +86,15 @@ def troubleshoot(
             detail="Device not found",
         )
 
+    question = (
+        f"Investigate device {request.device_id}.\n"
+        f"User question: {request.question}"
+    )
+
     try:
 
-        question = (
-            f"Investigate device {request.device_id}.\n"
-            f"User question: {request.question}"
-        )
-
-        answer = ask_network_assistant(
-            question=question
+        answer = await ask_network_assistant(
+            question=question,
         )
 
         return TroubleshootingResponse(

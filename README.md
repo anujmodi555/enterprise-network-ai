@@ -31,3 +31,24 @@
                              │
                              ▼
                            User
+
+--- V3 Flow ---
+User
+ ↓
+FastAPI
+ ↓
+Gemini
+ ↓
+Function Call
+ ↓
+Tool Registry
+ ↓
+Python Tool
+ ↓
+Network Data
+ ↓
+Function Response
+ ↓
+Gemini
+ ↓
+Final Answer

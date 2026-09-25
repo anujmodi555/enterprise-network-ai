@@ -1,21 +1,26 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from .context import build_network_context
 from .data import devices as DEVICES
-from .llm import ask_llm
+from .llm import ask_network_assistant
 from .models import Alert, DeviceStatus
 
 
 app = FastAPI(
     title="Enterprise Network AI Assistant",
-    version="2.0.0",
+    version="3.0.0",
 )
 
 
 class TroubleshootingRequest(BaseModel):
-    device_id: str
-    question: str
+    device_id: str = Field(
+        min_length=1,
+        description="Network device identifier",
+    )
+    question: str = Field(
+        min_length=3,
+        description="Network troubleshooting question",
+    )
 
 
 class TroubleshootingResponse(BaseModel):
@@ -24,8 +29,12 @@ class TroubleshootingResponse(BaseModel):
     answer: str
 
 
-@app.get("/devices/{device_id}/status", response_model=DeviceStatus)
+@app.get(
+    "/devices/{device_id}/status",
+    response_model=DeviceStatus,
+)
 def get_device_status(device_id: str):
+
     device = DEVICES.get(device_id)
 
     if not device:
@@ -40,13 +49,17 @@ def get_device_status(device_id: str):
         "vendor": device["vendor"],
         "model": device["model"],
         "status": device["status"],
-        "cpu": device["cpu"],
-        "memory": device["memory"],
+        "cpu_percent": device["cpu_percent"],
+        "memory_percent": device["memory_percent"],
     }
 
 
-@app.get("/devices/{device_id}/alerts", response_model=list[Alert])
+@app.get(
+    "/devices/{device_id}/alerts",
+    response_model=list[Alert],
+)
 def get_device_alerts(device_id: str):
+
     device = DEVICES.get(device_id)
 
     if not device:
@@ -62,7 +75,9 @@ def get_device_alerts(device_id: str):
     "/troubleshoot",
     response_model=TroubleshootingResponse,
 )
-def troubleshoot(request: TroubleshootingRequest):
+def troubleshoot(
+    request: TroubleshootingRequest,
+):
 
     if request.device_id not in DEVICES:
         raise HTTPException(
@@ -71,13 +86,14 @@ def troubleshoot(request: TroubleshootingRequest):
         )
 
     try:
-        network_context = build_network_context(
-            request.device_id
+
+        question = (
+            f"Investigate device {request.device_id}.\n"
+            f"User question: {request.question}"
         )
 
-        answer = ask_llm(
-            question=request.question,
-            network_context=network_context,
+        answer = ask_network_assistant(
+            question=question
         )
 
         return TroubleshootingResponse(
@@ -87,7 +103,8 @@ def troubleshoot(request: TroubleshootingRequest):
         )
 
     except RuntimeError as exc:
+
         raise HTTPException(
             status_code=500,
             detail=str(exc),
-        )
+        ) from exc

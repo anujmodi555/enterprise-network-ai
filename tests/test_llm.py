@@ -8,12 +8,15 @@ client = TestClient(app)
 
 def test_troubleshoot_endpoint(monkeypatch):
 
-    def fake_ask_llm(question: str, network_context: str) -> str:
-        return "R1 has high CPU utilization."
+    def fake_network_assistant(question: str) -> str:
+        return (
+            "R1 has high CPU utilization and an "
+            "active CPU alert."
+        )
 
     monkeypatch.setattr(
-        "enterprise_network_ai.main.ask_llm",
-        fake_ask_llm,
+        "enterprise_network_ai.main.ask_network_assistant",
+        fake_network_assistant,
     )
 
     response = client.post(
@@ -29,11 +32,19 @@ def test_troubleshoot_endpoint(monkeypatch):
     data = response.json()
 
     assert data["device_id"] == "R1"
-    assert data["question"] == "Why is the CPU high?"
-    assert data["answer"] == "R1 has high CPU utilization."
+
+    assert (
+        data["question"]
+        == "Why is the CPU high?"
+    )
+
+    assert (
+        "high CPU"
+        in data["answer"]
+    )
 
 
-def test_troubleshoot_unknown_device():
+def test_unknown_device():
 
     response = client.post(
         "/troubleshoot",

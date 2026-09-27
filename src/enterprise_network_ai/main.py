@@ -5,6 +5,18 @@ from .data import devices as DEVICES
 from .gemini_mcp import ask_network_assistant
 from .models import Alert, DeviceStatus
 
+from .rag import (
+    ask_knowledge_question,
+    retrieve_knowledge,
+)
+from .models import (
+    Alert,
+    DeviceStatus,
+    KnowledgeAskRequest,
+    KnowledgeAskResponse,
+    KnowledgeSearchResponse,
+)
+
 
 app = FastAPI(
     title="Enterprise Network AI Assistant",
@@ -101,6 +113,78 @@ async def troubleshoot(
             device_id=request.device_id,
             question=request.question,
             answer=answer,
+        )
+
+    except RuntimeError as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
+        ) from exc
+
+
+@app.get(
+    "/knowledge/search",
+    response_model=list[KnowledgeSearchResponse],
+)
+def search_knowledge(
+    q: str,
+    top_k: int = 5,
+):
+
+    if not q.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Query cannot be empty.",
+        )
+
+    if top_k < 1 or top_k > 10:
+        raise HTTPException(
+            status_code=400,
+            detail="top_k must be between 1 and 10.",
+        )
+
+    results = retrieve_knowledge(
+        question=q,
+        top_k=top_k,
+    )
+
+    return [
+        KnowledgeSearchResponse(
+            document_name=result[
+                "document_name"
+            ],
+            title=result["title"],
+            chunk_index=result[
+                "chunk_index"
+            ],
+            content=result["content"],
+            similarity=result[
+                "similarity"
+            ],
+        )
+        for result in results
+    ]
+
+
+@app.post(
+    "/knowledge/ask",
+    response_model=KnowledgeAskResponse,
+)
+def ask_knowledge(
+    request: KnowledgeAskRequest,
+):
+
+    try:
+
+        result = ask_knowledge_question(
+            question=request.question,
+            top_k=request.top_k,
+        )
+
+        return KnowledgeAskResponse(
+            answer=result["answer"],
+            sources=result["sources"],
         )
 
     except RuntimeError as exc:

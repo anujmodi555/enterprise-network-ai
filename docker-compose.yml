@@ -1,0 +1,31 @@
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg18-trixie
+
+    container_name: enterprise-network-postgres
+
+    environment:
+      POSTGRES_DB: network_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - network_ai_pgdata:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d network_ai"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+volumes:
+  network_ai_pgdata:
